@@ -1,0 +1,12 @@
+{
+  "clip": {
+    "x": 281,
+    "y": 0,
+    "width": 999,
+    "height": 820
+  },
+  "totalFrames": 102,
+  "target": "div.topbar",
+  "fps": 15,
+  "dpr": 2
+}

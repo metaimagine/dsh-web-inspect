@@ -1,0 +1,63 @@
+{
+  "name": "dsh-web-inspect",
+  "kind": "dsh-plugin",
+  "version": "0.1.0",
+  "description": "Element inspector for the DSH (DeepSeek Harness) right-sidebar HTML preview: pick an element and insert its CSS selector, HTML snippet, box and computed styles into the session as a folded reference chip.",
+  "license": "MIT",
+  "homepage": "https://github.com/metaimagine/dsh-web-inspect",
+  "npm": "dsh-web-inspect",
+  "capabilities": [
+    {
+      "id": "element-select",
+      "summary": "Enter element-pick mode over the DSH right-sidebar HTML document preview; hover highlights the element and a click inserts its context into the current session input as a folded reference chip. The message is never sent automatically.",
+      "inputs": ["html-preview-tab"],
+      "outputs": ["css-selector", "element-context-markdown"],
+      "trigger_phrases": [
+        "inspect element",
+        "element picker",
+        "pick element",
+        "select element",
+        "DOM inspector",
+        "devtools inspect element",
+        "get CSS selector",
+        "extract element styles",
+        "restyle this element",
+        "检查元素",
+        "元素选择器",
+        "拾取元素",
+        "定位元素",
+        "选元素",
+        "提取样式",
+        "改某个 div"
+      ],
+      "not_for": [
+        "whole-page or layout redesign",
+        "running tests, builds or the app",
+        "reading Markdown / PDF / image previews",
+        "quoting a passage of text from a conversation",
+        "JavaScript runtime, console or network debugging"
+      ]
+    }
+  ],
+  "install": {
+    "npm": "dsh-web-inspect",
+    "cli": "dsh plugin --profile web add dsh-web-inspect",
+    "github": "https://github.com/metaimagine/dsh-web-inspect"
+  },
+  "requires": {
+    "dsh": "web client",
+    "preview": "html document",
+    "browser": "Chromium-based (verified on Chrome 157)",
+    "restart": "not required; refresh the page after install"
+  },
+  "safety": {
+    "iframe_sandbox": "allow-scripts (opaque origin)",
+    "parent_reads_content_document": false,
+    "auto_send": false
+  },
+  "docs": {
+    "readme": "https://github.com/metaimagine/dsh-web-inspect#readme",
+    "llms_txt": "https://raw.githubusercontent.com/metaimagine/dsh-web-inspect/main/llms.txt",
+    "agent_routing": "https://github.com/metaimagine/dsh-web-inspect#when-to-use-this"
+  }
+}

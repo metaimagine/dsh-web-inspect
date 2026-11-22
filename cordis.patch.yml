@@ -1,0 +1,13 @@
+# dsh-web-inspect bundle layer.
+#
+# A single host row is enough: the row's package declares the browser half under
+# `dsh.client`, so loading this row brings both halves. The browser half owns the
+# HTML document-preview renderer override, the tab-header toggle and the sandboxed
+# iframe inspector. The host half has no durable state and no routes (empty apply).
+#
+# The profile keeps the plugin's settings, if any. Nothing here touches other
+# plugins.
+
+- insert:
+    - id: dsh-web-inspect
+      name: dsh-web-inspect

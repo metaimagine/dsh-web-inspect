@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>莫兰迪 · 方角 + 阴影 / Apple 桌面稿</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","PingFang SC","Noto Sans SC",sans-serif;--mono:"SF Mono","SFMono-Regular",ui-monospace,Menlo,monospace}
+  body{min-width:1180px;background:#F4F6F5;color:#3F4A4F;font-family:var(--sans);padding:32px 36px 26px;-webkit-font-smoothing:antialiased}
+  .top{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:28px;margin-bottom:18px}
+  .eyebrow{font-size:9px;letter-spacing:.16em;color:#8A979B;margin-bottom:9px}
+  h1{font-size:35px;line-height:1.08;letter-spacing:-.05em;font-weight:700;color:#303C40}
+  .lede{font-size:11px;line-height:1.8;color:#78868A;margin-top:8px}
+  .lede b{color:#3F4A4F;font-weight:600}
+  .controls{display:flex;align-items:center;gap:8px;margin-top:22px;flex-shrink:0}
+  .seg{display:flex;border:1px solid #D5E0E1;background:#FBFCFB;padding:2px}
+  .seg button{height:30px;padding:0 12px;border:0;background:transparent;color:#758589;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer}
+  .seg button.active{background:#3F4A4F;color:#fff}
+  .seg button:hover:not(.active){background:#EDF2F2}
+  .hint{font-size:9px;color:#8A979B;margin-left:3px}
+  .stage{position:relative;padding:24px 26px 28px;background:linear-gradient(155deg,#DCE8E9,#C9DCDE);border:1px solid #BFD0D2}
+  .stage-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:8.5px;letter-spacing:.07em;color:#819095}
+  .stage-meta b{font-weight:600;color:#5C6C70;letter-spacing:.03em}
+  .win{position:relative;display:flex;width:1060px;height:620px;margin:0 auto;background:var(--win);border:1px solid var(--line);border-radius:var(--r-window);overflow:hidden;box-shadow:var(--window-shadow);color:var(--ink);font-size:11px}
+  .stage[data-shape="square"] .win{--r-window:2px;--r-card:2px;--r-btn:2px;--r-bubble:2px;--r-chip:2px;--window-shadow:0 22px 44px rgba(31,50,54,.28),0 5px 14px rgba(31,50,54,.14);--line:#CBD8D9;--win:#FEFEFC;--side:#E9EEED;--rail:#F1F5F3;--ink:#344247;--muted:#65767A;--faint:#819195;--accent:#8FA0AB;--accent-ink:#5F7D87;--accent-soft:#E3ECEE;--accent-line:#B9CBD0;--user:#7C929C;--user-ink:#fff;--assistant:#EAF0F0;--pending:#8D693D;--pending-bg:#F1E9DC;--success:#6E8C7E;--card-shadow:none;--dock-shadow:0 14px 28px rgba(28,45,49,.22),0 3px 8px rgba(28,45,49,.1)}
+  .stage[data-shape="round"] .win{--r-window:18px;--r-card:10px;--r-btn:7px;--r-bubble:14px;--r-chip:999px;--window-shadow:0 22px 44px rgba(31,50,54,.24),0 5px 14px rgba(31,50,54,.12);--line:#CBD8D9;--win:#FEFEFC;--side:#E9EEED;--rail:#F1F5F3;--ink:#344247;--muted:#65767A;--faint:#819195;--accent:#8FA0AB;--accent-ink:#5F7D87;--accent-soft:#E3ECEE;--accent-line:#B9CBD0;--user:#7C929C;--user-ink:#fff;--assistant:#EAF0F0;--pending:#8D693D;--pending-bg:#F1E9DC;--success:#6E8C7E;--dock-shadow:0 14px 28px rgba(28,45,49,.18),0 3px 8px rgba(28,45,49,.08)}
+  .sidebar{position:relative;width:176px;flex-shrink:0;background:var(--side);border-right:1px solid var(--line);padding:38px 12px 12px;display:flex;flex-direction:column}
+  .traffic{position:absolute;top:15px;left:15px;width:9px;height:9px;border-radius:50%;background:#FF5F57;box-shadow:16px 0 #FEBC2E,32px 0 #28C840}
+  .logo{display:flex;align-items:center;gap:7px;font-weight:650;font-size:12.5px;letter-spacing:-.02em;color:var(--ink);margin:4px 4px 18px}
+  .mark{width:23px;height:23px;border-radius:var(--r-btn);display:grid;place-items:center;background:var(--accent);color:#fff;font-size:11px}
+  .new{height:28px;border:1px solid var(--accent-line);border-radius:var(--r-btn);background:var(--accent-soft);color:var(--accent-ink);font-family:inherit;font-size:10.5px;font-weight:650;margin-bottom:13px;cursor:pointer;text-align:left;padding:0 9px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav span{height:27px;display:flex;align-items:center;padding:0 8px;border-radius:var(--r-btn);color:var(--muted);font-size:10.5px}
+  .nav span.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:650}
+  .label{font-size:8px;letter-spacing:.06em;color:var(--faint);margin:19px 8px 6px}
+  .workspace{height:26px;border-radius:var(--r-btn);background:rgba(120,135,137,.08);display:flex;align-items:center;gap:6px;padding:0 8px;font-size:10px;color:var(--muted)}
+  .workspace i{width:7px;height:7px;border-radius:var(--r-card);background:var(--accent);opacity:.7}
+  .sessions{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+  .session{height:25px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:var(--r-btn);font-size:10px;color:var(--muted)}
+  .session.active{background:var(--accent-soft);color:var(--accent-ink)}
+  .session i{width:5px;height:5px;border-radius:50%;background:var(--faint)}
+  .session.active i{background:var(--accent)}
+  .rail-foot{margin-top:auto;border-top:1px solid var(--line);padding:10px 4px 0;font-size:8.5px;color:var(--faint);display:flex;align-items:center;justify-content:space-between}
+  .rail-foot b{width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:var(--win)}
+  .topbar-left{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:650;color:var(--ink)}
+  .mode{font-size:9px;color:var(--accent-ink);background:var(--accent-soft);padding:3px 6px;border-radius:var(--r-chip);font-weight:650}
+  .sync{font-size:9px;color:var(--faint);display:flex;align-items:center;gap:4px}
+  .sync:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--success)}
+  .chat{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 24px 13px;overflow:hidden}
+  .meta{display:flex;align-items:center;gap:7px;color:var(--faint);font-size:9.5px;flex-wrap:wrap}
+  .meta .pill{font-size:8px;color:var(--success);background:color-mix(in srgb,var(--success) 11%,transparent);padding:2px 5px;border-radius:var(--r-chip)}
+  .hero{padding:7px 0 12px;flex-shrink:0}
+  .hero h3{font-size:33px;line-height:1.08;letter-spacing:-.05em;font-weight:700;color:var(--ink)}
+  .hero p{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+  .thread{display:flex;flex-direction:column;gap:7px;flex-shrink:0}
+  .msg{max-width:88%;padding:10px 12px;border-radius:var(--r-bubble);line-height:1.55;font-size:11.5px}
+  .msg.user{align-self:flex-end;background:var(--user);color:var(--user-ink);box-shadow:0 2px 6px color-mix(in srgb,var(--user) 20%,transparent)}
+  .msg.assistant{align-self:flex-start;background:var(--assistant);color:var(--ink);border:1px solid transparent}
+  .stage[data-shape="square"] .msg.assistant{border-color:var(--line);box-shadow:none}
+  .sender{font-size:9px;color:var(--faint);margin:0 0 -4px 3px}
+  .chipbar{align-self:center;font-size:8.5px;color:var(--faint);display:flex;align-items:center;gap:4px}
+  .chipbar:before{content:"";width:4px;height:4px;border-radius:50%;background:var(--success)}
+  .sys{align-self:flex-start;font-size:9px;color:var(--muted);background:var(--assistant);padding:7px 9px;border-radius:var(--r-bubble);border:1px solid transparent;margin-top:1px}
+  .stage[data-shape="square"] .sys{border-color:var(--line)}
+  .callout{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 11px;border-radius:var(--r-card);background:var(--win);border:1px solid var(--line);flex-shrink:0}
+  .callout-icon{width:22px;height:22px;flex-shrink:0;border-radius:var(--r-btn);background:var(--accent-soft);display:grid;place-items:center;color:var(--accent-ink);font-size:11px}
+  .callout b{display:block;font-size:11px;color:var(--ink);font-weight:650}
+  .callout p{font-size:9.5px;color:var(--faint);margin-top:2px}
+  .callout .chev{margin-left:auto;color:var(--faint);font-size:12px}
+  .dock{margin-top:auto;padding-top:10px;flex-shrink:0}
+  .dock-head{width:100%;height:42px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--win);box-shadow:var(--dock-shadow);cursor:pointer;font-family:inherit;color:var(--ink)}
+  .dock-symbol{width:20px;height:20px;border-radius:var(--r-btn);background:var(--accent);color:#fff;display:grid;place-items:center;font-size:9.5px;font-weight:700;flex-shrink:0}
+  .dock-title{font-size:12px;font-weight:650;text-align:left;white-space:nowrap}
+  .dock-sub{font-size:10px;color:var(--faint);margin-left:2px;white-space:nowrap}
+  .dock-action{margin-left:auto;font-size:9.5px;color:var(--accent-ink);font-weight:650;white-space:nowrap}
+  .task-list{display:none;margin:7px 0 0;border:1px solid var(--line);border-radius:var(--r-card);background:var(--win);box-shadow:0 16px 38px rgba(63,74,79,.1);overflow:hidden}
+  .task-row{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--line)}
+  .task-row:first-child{border-top:0}
+  .task-num{font-family:var(--mono);font-size:8px;color:var(--faint);width:18px;flex-shrink:0;padding-top:1px}
+  .task-body{min-width:0;flex:1}
+  .task-title{font-size:11.5px;font-weight:650;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .task-desc{font-size:9.5px;color:var(--faint);margin-top:2px;line-height:1.4}
+  .task-state{font-size:9px;padding:2px 5px;border-radius:var(--r-chip);white-space:nowrap;flex-shrink:0;font-weight:650}
+  .task-state.run{color:var(--accent-ink);background:var(--accent-soft)}
+  .task-state.pending{color:var(--pending);background:var(--pending-bg)}
+  .task-state.done{color:var(--success);background:color-mix(in srgb,var(--success) 12%,transparent)}
+  .task-options{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+  .task-options button{height:24px;padding:0 8px;border:1px solid var(--accent-line);border-radius:var(--r-btn);background:var(--accent-soft);color:var(--accent-ink);font-size:8px;font-family:inherit;cursor:pointer}
+  .task-options button:hover{background:#DCE8EA}
+  .task-row.answered{background:color-mix(in srgb,var(--success) 5%,transparent)}
+  .task-row.answered .task-options{display:none}
+  .task-answered{display:none;font-size:8px;color:var(--success);margin-top:6px}
+  .task-row.answered .task-answered{display:block}
+  .composer{height:40px;display:flex;align-items:center;gap:7px;margin-top:8px;padding:0 9px;border-radius:var(--r-card);background:var(--assistant);border:1px solid transparent}
+  .stage[data-shape="square"] .composer{border-color:var(--line)}
+  .plus{width:20px;height:20px;border-radius:var(--r-btn);background:color-mix(in srgb,var(--faint) 16%,transparent);color:var(--muted);display:grid;place-items:center;font-size:10px;flex-shrink:0}
+  .composer span{font-size:10.5px;color:var(--faint)}
+  .send{margin-left:auto;width:23px;height:23px;border-radius:var(--r-btn);background:var(--accent);color:#fff;display:grid;place-items:center;font-size:10.5px;flex-shrink:0}
+  .note{text-align:center;font-size:8.5px;color:var(--faint);margin-top:6px}
+  .rail{width:216px;flex-shrink:0;background:var(--rail);border-left:1px solid var(--line);padding:18px 16px 12px;display:flex;flex-direction:column}
+  .rail-head{display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:9px}
+  .rail-head i{letter-spacing:2px;font-style:normal}
+  .rail h4{font-size:30px;line-height:1.05;letter-spacing:-.05em;margin-top:8px;color:var(--ink)}
+  .rail-sub{font-size:9px;color:var(--faint);margin-top:4px}
+  .rail-list{margin-top:17px}
+  .rail-item{display:flex;align-items:center;gap:7px;padding:8px 0;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+  .rail-item:first-child{border-top:0}
+  .rail-item i{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+  .rail-item.pending i{background:var(--pending)}
+  .rail-item span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rail-item b{font-size:8.5px;font-weight:500;color:var(--faint)}
+  .rail-item.pending b{color:var(--pending)}
+  .activity{margin-top:19px}
+  .activity-label{font-size:8.5px;color:var(--faint);margin-bottom:5px}
+  .event{padding:5px 0 5px 10px;font-size:9.5px;color:var(--muted);line-height:1.4;position:relative}
+  .event:before{content:"";position:absolute;left:0;top:9px;width:4px;height:4px;border-radius:50%;background:var(--faint);opacity:.55}
+  .event span{display:block;color:var(--faint);font-size:7.5px;margin-top:1px}
+  .rail-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:9px;font-size:7.5px;line-height:1.55;color:var(--faint)}
+  .win.expanded .rail{display:none}
+  .win.expanded .hero{display:none}
+  .win.expanded .thread{display:none}
+  .win.expanded .sender{display:none}
+  .win.expanded .callout{display:none}
+  .win.expanded .sys{display:none}
+  .win.expanded .chat{padding-top:16px}
+  .win.expanded .task-list{display:block}
+  .win.expanded .note{display:none}
+  .win.expanded .dock-head{box-shadow:none}
+  .legend{display:flex;align-items:center;justify-content:space-between;margin-top:13px;font-size:8.5px;color:#819095}
+  .legend span:last-child{font-family:var(--mono);font-size:7.5px;letter-spacing:.02em}
+  .refs{margin-top:22px;border-top:1px solid #D5E0E0;padding-top:18px}
+  .refs-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:13px}
+  .refs h2{font-size:15px;font-weight:650;letter-spacing:-.02em;color:#303C40}
+  .refs-head p{font-size:9px;color:#8A979B}
+  .ref-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .ref{background:#FBFCFB;border:1px solid #D9E2E3;border-radius:2px;padding:16px 16px 14px;display:flex;flex-direction:column;min-height:150px}
+  .ref-top{display:flex;align-items:center;justify-content:space-between;font-size:8.5px;color:#8A979B;letter-spacing:.04em}
+  .ref h3{font-size:13px;font-weight:650;letter-spacing:-.02em;color:#3F4A4F;margin-top:14px}
+  .ref p{font-size:9.5px;line-height:1.7;color:#728287;margin-top:6px;flex:1}
+  .ref a{font-size:8.5px;color:#5F7D87;text-decoration:none;border-bottom:1px solid #C4D2D5;align-self:flex-start;margin-top:12px;padding-bottom:1px}
+  .ref a:hover{border-color:#5F7D87}
+  .ref-swatch{display:flex;gap:4px;margin-top:12px}
+  .ref-swatch i{width:100%;height:8px;background:#8FA0AB}
+  .ref-swatch i:nth-child(2){background:#EAF0F0}
+  .ref-swatch i:nth-child(3){background:#D9E2E3}
+  .ref-swatch i:nth-child(4){background:#F1E9DC}
+  .foot{display:flex;justify-content:space-between;border-top:1px solid #D5E0E0;margin-top:20px;padding-top:12px;font-size:8.5px;color:#8A979B}
+  .foot span:last-child{font-family:var(--mono);font-size:7.5px}
+  @media(max-width:900px){
+    body{min-width:0;padding:20px 16px}
+    h1{font-size:28px}
+    .top{display:block}
+    .controls{margin-top:14px}
+    .stage{padding:12px 10px 16px}
+    .win{width:100%;height:660px}
+    .sidebar{display:none}
+    .rail{display:none}
+    .win.expanded .rail{display:none}
+    .win .hero h3{font-size:28px}
+    .win .hero p{font-size:10px}
+    .win .callout{display:none}
+    .win .meta{font-size:8.5px}
+    .win .msg{font-size:10.5px}
+    .win .chat{padding:14px 12px 10px}
+    .stage-meta{font-size:8px;line-height:1.5;gap:10px;align-items:flex-start}
+    .stage-meta span:last-child{display:none}
+    .legend{display:block;line-height:1.65}
+    .legend span:last-child{display:block;margin-top:4px}
+    .ref-grid{grid-template-columns:1fr}
+    .refs-head{display:block}
+    .refs-head p{margin-top:4px}
+    .foot{display:block;line-height:1.7}
+    .foot span:last-child{display:block;margin-top:4px}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <div class="eyebrow">MORANDI / SHAPE STUDY</div>
+    <h1>把圆角拿掉之后</h1>
+    <p class="lede">同一个莫兰迪配色，同一套桌面结构。现在试<b>方角 + 克制的阴影</b>：<br>不是给每张卡片都加投影，而是让窗口、任务条和浮层有重量，其他东西靠线和底色分层。</p>
+  </div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="切换边角形态">
+      <button id="shape-square" class="active" aria-pressed="true">方角 + 阴影</button>
+      <button id="shape-round" aria-pressed="false">圆角</button>
+    </div>
+    <span class="hint">可切换</span>
+  </div>
+</header>
+
+<section class="stage" data-shape="square" id="stage">
+  <div class="stage-meta"><span><b>01 / ASTER DESKTOP</b> · MORANDI MUTED</span><span id="stage-label">SQUARE 2px · ELEVATION ONLY WHEN FLOATING</span></div>
+  <div class="win" id="win">
+    <aside class="sidebar">
+      <div class="traffic"></div>
+      <div class="logo"><span class="mark">⚡</span>Aster</div>
+      <button class="new">＋ 新对话</button>
+      <div class="nav"><span class="active">☼ 概览</span><span>◇ 对话</span><span>♡ 收藏</span><span>⋯ 设置</span></div>
+      <div class="label">工作区</div>
+      <div class="workspace"><i></i>demo-app</div>
+      <div class="sessions"><div class="session"><i></i>架构调研</div><div class="session active"><i></i>Greeting</div><div class="session"><i></i>PortyWire 体检</div></div>
+      <div class="rail-foot"><span>demo-app</span><b></b></div>
+    </aside>
+    <main class="main">
+      <div class="topbar"><div class="topbar-left">Greeting <span class="mode">主对话</span></div><span class="sync">同步</span></div>
+      <div class="chat">
+        <div class="meta">星期二 · 11月22日 · demo-app <span class="pill">3 个任务在后台</span></div>
+        <div class="hero"><h3>与 Aster 对话</h3><p>一个对话，所有工作都在其中。需要你时，任务才出现。</p></div>
+        <div class="thread">
+          <div class="sender">Aster</div>
+          <div class="msg assistant">收到。我会把它们拆开并行推进，有需要你决定的地方再找你。</div>
+          <div class="chipbar">3 个任务已登记 · 3 个后台会话</div>
+          <div class="msg user">不要把页面切走，结果就放在这条消息下面。</div>
+          <div class="sender">Aster</div>
+          <div class="msg assistant">明白。默认只留一条任务提醒，需要时再展开。</div>
+        </div>
+        <div class="callout"><div class="callout-icon">✦</div><div><b>任务贴着对话，不另开页面。</b><p>展开后在对话里直接回答，结果回到这条线。</p></div><span class="chev">›</span></div>
+        <div class="sender" style="margin-top:2px">你</div>
+        <div class="msg user">先别切页面，给我一个能一眼看懂的安排。</div>
+        <div class="sender">Aster</div>
+        <div class="msg assistant">可以。先并行做架构调研和 PortyWire 体检；轻量盯梢等你点头，不替你决定。</div>
+        <div class="dock">
+          <button class="dock-head" id="dock-toggle" type="button"><span class="dock-symbol">3</span><span class="dock-title">3 个任务</span><span class="dock-sub">1 个待回答</span><span class="dock-action" id="dock-action">展开⌄</span></button>
+          <div class="task-list">
+            <div class="task-row"><span class="task-num">01</span><div class="task-body"><div class="task-title">调研 Super-Agent 架构</div><div class="task-desc">6 个子智能体 · 正在整理架构对比</div></div><span class="task-state run">进行中</span></div>
+            <div class="task-row"><span class="task-num">02</span><div class="task-body"><div class="task-title">PortyWire 数据体检</div><div class="task-desc">正在核对 quotes / candles 覆盖</div></div><span class="task-state run">进行中</span></div>
+            <div class="task-row"><span class="task-num">03</span><div class="task-body"><div class="task-title">每日轻量盯梢</div><div class="task-desc">要开启每天一次的轻量盯梢吗？</div><div class="task-options"><button>开启盯梢</button><button>先看结果</button><button>暂不需要</button></div><div class="task-answered">✓ 已回答</div></div><span class="task-state pending">待回答</span></div>
+          </div>
+        </div>
+        <div class="composer"><span class="plus">＋</span><span>给 Aster 发消息…</span><span class="send">↑</span></div>
+        <div class="note">默认只留这一行，点击后展开任务</div>
+      </div>
+    </main>
+    <aside class="rail">
+      <div class="rail-head">今日 <i>⋯</i></div>
+      <h4>3 个任务</h4>
+      <p class="rail-sub">2 个进行中 · 1 个待回答</p>
+      <div class="rail-list">
+        <div class="rail-item"><i></i><span>架构调研</span><b>进行中</b></div>
+        <div class="rail-item"><i></i><span>PortyWire 体检</span><b>进行中</b></div>
+        <div class="rail-item pending"><i></i><span>每日轻量盯梢</span><b>待回答</b></div>
+      </div>
+      <div class="activity"><div class="activity-label">最近活动</div><div class="event">拆成 3 个后台任务<span>Aster · 3 分钟前</span></div><div class="event">架构调研开始<span>worker · 2 分钟前</span></div><div class="event">正在核对 candles 覆盖<span>PortyWire · 刚刚</span></div></div>
+      <div class="rail-foot">所有提醒都对应一件真实的工作。需要你时，任务会直接展开在这里。</div>
+    </aside>
+  </div>
+  <div class="legend"><span>方角规则：窗口 2px / 卡片 2px / 按钮 2px；阴影只给窗口、任务条、任务 sheet；平面层靠 1px 细线和底色分层。</span><span>1440 VIEW · STATIC DESIGN</span></div>
+</section>
+
+<section class="refs">
+  <div class="refs-head"><h2>参考了什么</h2><p>不是凭感觉削圆角，先把“什么时候该有阴影”定清楚。</p></div>
+  <div class="ref-grid">
+    <article class="ref">
+      <div class="ref-top"><span>01 / IBM CARBON</span><span>直角 · 平面</span></div>
+      <h3>直角不等于方盒子</h3>
+      <p>Carbon 的 tile 与页面同层、默认没有 elevation；“不要给 tile 加投影”，投影留给 modal / popover / dialog 这类真正浮起来的层。</p>
+      <div class="ref-swatch"><i></i><i></i><i></i><i></i></div>
+      <a href="https://www.carbondesignsystem.com/building-blocks/core/components/tile/guidelines" target="_blank" rel="noreferrer">Carbon Tile guidelines ↗</a>
+    </article>
+    <article class="ref">
+      <div class="ref-top"><span>02 / VERCEL GEIST</span><span>半透明阴影</span></div>
+      <h3>阴影不要留灰晕</h3>
+      <p>Geist 的规则是“保持材质阴影半透明”，并且每道边框只画一次；重叠的 alpha 边会在交界处变脏。</p>
+      <div class="ref-swatch"><i></i><i></i><i></i><i></i></div>
+      <a href="https://vercel.com/geist/colors" target="_blank" rel="noreferrer">Geist Colors ↗</a>
+    </article>
+    <article class="ref">
+      <div class="ref-top"><span>03 / SWISS GRID</span><span>几何秩序</span></div>
+      <h3>先网格，后装饰</h3>
+      <p>国际主义排版风格用网格、对齐和留白制造秩序；直角只是结果，不是目的。方角版用 8px 的间距节奏和更硬的边线。</p>
+      <div class="ref-swatch"><i></i><i></i><i></i><i></i></div>
+      <a href="https://en.wikipedia.org/wiki/International_Typographic_Style" target="_blank" rel="noreferrer">International Typographic Style ↗</a>
+    </article>
+  </div>
+</section>
+
+<footer class="foot"><span>方角 + 适当阴影 · 白 + 雾蓝 · 只改评审稿，不动 live 插件</span><span>ONE / VISUAL REVIEW · MORANDI</span></footer>
+
+<script>
+  const stage = document.getElementById('stage');
+  const win = document.getElementById('win');
+  const square = document.getElementById('shape-square');
+  const round = document.getElementById('shape-round');
+  const label = document.getElementById('stage-label');
+  const dockToggle = document.getElementById('dock-toggle');
+  const dockAction = document.getElementById('dock-action');
+  const setShape = (shape) => {
+    stage.dataset.shape = shape;
+    const isSquare = shape === 'square';
+    square.classList.toggle('active', isSquare);
+    round.classList.toggle('active', !isSquare);
+    square.setAttribute('aria-pressed', String(isSquare));
+    round.setAttribute('aria-pressed', String(!isSquare));
+    label.textContent = isSquare ? 'SQUARE 2px · ELEVATION ONLY WHEN FLOATING' : 'ROUND 18px · SOFT ELEVATION';
+  };
+  square.addEventListener('click', () => setShape('square'));
+  round.addEventListener('click', () => setShape('round'));
+  dockToggle.addEventListener('click', () => {
+    const expanded = win.classList.toggle('expanded');
+    dockAction.textContent = expanded ? '收起⌃' : '展开⌄';
+  });
+  document.querySelectorAll('.task-options button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.task-row');
+      row.classList.add('answered');
+      row.querySelector('.task-answered').textContent = '✓ 已回答：' + btn.textContent;
+      const state = row.querySelector('.task-state.pending');
+      state.className = 'task-state done';
+      state.textContent = '已回答';
+    });
+  });
+  if (new URLSearchParams(location.search).get('shape') === 'round') setShape('round');
+  if (new URLSearchParams(location.search).get('expanded') === '1') {
+    win.classList.add('expanded');
+    dockAction.textContent = '收起⌃';
+  }
+</script>
+</body>
+</html>

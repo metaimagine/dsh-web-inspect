@@ -1,0 +1,29 @@
+# dsh-web-inspect
+
+> Element inspector for the DeepSeek Harness (DSH) web UI. In the right-sidebar HTML preview,
+> hover to highlight an element, click to select it, and the element's context is inserted into
+> the current session input as a folded reference chip (not auto-sent).
+
+- Kind: DSH Web client plugin (browser half only; host half is an empty `apply()`).
+- Install: `dsh plugin --profile web add dsh-web-inspect`; then refresh the page (no `dsh web` restart).
+- Use when: the user points at a specific element of an `.html`/`.htm` page previewed in the DSH
+  right sidebar and the task needs its selector / HTML / box / computed styles (resize, recolor,
+  restyle, move it).
+- Do NOT use for: whole-page redesign, tests/builds/app runs, Markdown/PDF/image previews, quoting a
+  text passage (use the official quote feature), or JS runtime / console / network debugging.
+- What an agent gets: a folded chip in the composer; on send the model receives English Markdown
+  starting with `> Selected element: <selector> (<tag#id.class>, W×H)`, then an HTML snippet,
+  `- Text:`, `- Styles:` (non-default computed styles), `- Clues:` (`data-*` / `aria-*` hints),
+  `- Positioned ancestor:`, and `- Source:` (absolute path of the previewed file, or `- URL:` for
+  an http(s) preview) so you can open the document instead of guessing. Nothing is auto-sent — the
+  user reviews first.
+- Safety: the preview iframe is opaque-origin (`sandbox="allow-scripts"`), the inspector runtime is
+  injected into the srcdoc document, and app↔preview communication is `postMessage` only; the app
+  never reads `contentDocument`.
+- Requirements: DSH web client, an `.html`/`.htm` document preview, a Chromium-based browser
+  (verified on Chrome 157).
+- Links:
+  - npm: https://www.npmjs.com/package/dsh-web-inspect
+  - GitHub: https://github.com/metaimagine/dsh-web-inspect
+  - capability card: https://raw.githubusercontent.com/metaimagine/dsh-web-inspect/main/docs/capabilities.json
+  - routing rules: https://github.com/metaimagine/dsh-web-inspect#when-to-use-this

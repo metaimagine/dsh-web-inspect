@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-web-inspect engine selftest</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  #result { margin: 0; white-space: pre-wrap; }
+</style>
+<script src="../lib/inspector.js"></script>
+</head>
+<body>
+<pre id="result">RUNNING</pre>
+<script>
+(function () {
+  'use strict';
+
+  var engine = window.__DSH_INSPECT_ENGINE__;
+  var results = [];
+  var pass = 0;
+  var fail = 0;
+  var resultEl = document.getElementById('result');
+
+  function render() {
+    resultEl.textContent = results.join('\n');
+  }
+
+  function assert(ok, name, detail) {
+    if (ok) {
+      pass++;
+      results.push('PASS: ' + name);
+    } else {
+      fail++;
+      results.push('FAIL: ' + name + (detail === undefined ? '' : ' | ' + detail));
+    }
+    render();
+    return !!ok;
+  }
+
+  function assertEq(actual, expected, name) {
+    return assert(actual === expected, name,
+      'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  function assertIncludes(haystack, needle, name) {
+    var s = String(haystack == null ? '' : haystack);
+    return assert(s.indexOf(needle) !== -1, name,
+      'missing ' + JSON.stringify(needle) + ' in ' + JSON.stringify(s.slice(0, 180)));
+  }
+
+  function section(name) {
+    results.push('');
+    results.push('## ' + name);
+    render();
+  }
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function waitFor(fn, timeoutMs, intervalMs) {
+    var deadline = Date.now() + (timeoutMs || 2000);
+    return new Promise(function (resolve) {
+      (function poll() {
+        var value = null;
+        try { value = fn(); } catch (e) { value = null; }
+        if (value) return resolve(value);
+        if (Date.now() > deadline) return resolve(null);
+        setTimeout(poll, intervalMs || 20);
+      })();
+    });
+  }
+
+  function fireMouse(doc, el, type, props) {
+    var win = doc.defaultView;
+    /* composed:true mirrors real user input; shadow-DOM events only cross the
+       shadow boundary (retargeted to the host) when composed is set. */
+    var init = { bubbles: true, cancelable: true, composed: true, view: win, clientX: 10, clientY: 10 };
+    if (props) for (var k in props) if (Object.prototype.hasOwnProperty.call(props, k)) init[k] = props[k];
+    var ev = new win.MouseEvent(type, init);
+    el.dispatchEvent(ev);
+    return ev;
+  }
+
+  function fireKey(doc, el, key) {
+    var win = doc.defaultView;
+    var ev = new win.KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true, view: win });
+    el.dispatchEvent(ev);
+    return ev;
+  }
+
+  function overlayOf(doc) {
+    return doc.querySelector('[data-dsh-web-inspect-overlay]');
+  }
+
+  function part(doc, name) {
+    return doc.querySelector('[data-dsh-web-inspect-part="' + name + '"]');
+  }
+
+  function makeIframe(width, height) {
+    var frame = document.createElement('iframe');
+    frame.style.cssText = 'position:absolute;left:-99999px;top:0;width:' + width +
+      'px;height:' + height + 'px;border:0;';
+    frame.setAttribute('title', 'selftest fixture frame');
+    document.body.appendChild(frame);
+    return frame;
+  }
+
+  function writeDoc(frame, html) {
+    var doc = frame.contentDocument;
+    if (!doc) return null;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    return doc;
+  }
+
+  var LONG_TEXT = '这是很长的一段文字，用来验证 describeElement 的文本截断行为；' +
+    '当元素的文本超过八十个字符时，引擎需要先折叠空白、再截断到八十个字符以内，' +
+    '并在结尾追加一个省略号，而不是把整段文字原样塞进 Markdown 上下文块里，' +
+    '从而避免提示词被无关文本撑爆。';
+
+  var SYNTHETIC_HTML = [
+    '<!doctype html><html><head><meta charset="utf-8"><style>',
+    'html, body { margin: 0; padding: 0; }',
+    'body { font: 16px/1.5 Arial, sans-serif; }',
+    '.dup { width: 120px; padding: 10px; margin-bottom: 8px; background: rgb(238, 242, 255); }',
+    '.wrapper { padding: 2px; }',
+    '.styled { display: flex; align-items: center; justify-content: center;',
+    '  width: 160px; height: 44px; color: rgb(255, 255, 255);',
+    '  background-color: rgb(124, 58, 237); position: relative; z-index: 3;',
+    '  border-radius: 10px; font-size: 18px; }',
+    '#demo-link { color: rgb(37, 99, 235); }',
+    'p.long { margin: 0; }',
+    '</style></head><body>',
+    '<div id="outer-root">',
+    '  <div class="wrapper"><div class="dup">dup A</div></div>',
+    '  <div class="wrapper"><div class="dup">dup B</div></div>',
+    '  <div class="dup">dup C</div>',
+    '  <div class="styled" id="styled-box">样式盒子</div>',
+    '  <a id="demo-link" href="https://example.com/never">一个链接</a>',
+    '  <p class="long" id="long-paragraph">' + LONG_TEXT + '</p>',
+    '  <section class="panel" id="panel"><ul><li>甲</li><li>乙</li><li>丙</li></ul></section>',
+    '  <input id="gender-input" name="gender" type="text" placeholder="说点什么" value="默认值">',
+    '  <div class="styled" data-widget="widget" data-state="open" role="button"',
+    '       aria-label="部件" style="opacity:0.9">第二个样式盒子</div>',
+    '  <div class="dup">dup D</div>',
+    '  <div id="weird:id" class="odd:class">转义目标</div>',
+    '</div>',
+    '<div id="shadow-host"></div>',
+    '<div id="frame-slot"></div>',
+    '</body></html>'
+  ].join('\n');
+
+  function htmlFence(md) {
+    var m = String(md).match(/```html\n([\s\S]*?)\n```/);
+    return m ? m[1] : null;
+  }
+
+  async function testApiSurface() {
+    section('API surface');
+    assert(!!engine, 'engine global exists (window.__DSH_INSPECT_ENGINE__)');
+    if (!engine) return false;
+    assertEq(typeof engine.createInspector, 'function', 'createInspector is a function');
+    assertEq(typeof engine.describeElement, 'function', 'describeElement is a function');
+    assertEq(typeof engine.formatContextMarkdown, 'function', 'formatContextMarkdown is a function');
+    assertEq(typeof engine.cssPath, 'function', 'cssPath is a function');
+    var threwNull = false;
+    try { engine.createInspector(null); } catch (e) { threwNull = true; }
+    assert(threwNull, 'createInspector(null) throws');
+    assertEq(engine.formatContextMarkdown(null), '', 'formatContextMarkdown(null) returns empty string');
+    return true;
+  }
+
+  async function testCssPath(doc) {
+    section('cssPath (uniqueness)');
+
+    var targets = [];
+    ['#outer-root', '.dup', '#styled-box', '#demo-link', '#long-paragraph',
+      '#panel', '#gender-input', 'p.long', '#weird\\:id'].forEach(function (sel) {
+      var list = doc.querySelectorAll(sel);
+      for (var i = 0; i < list.length; i++) targets.push(list[i]);
+    });
+
+    assert(targets.length >= 8, 'enough cssPath targets sampled (' + targets.length + ')');
+
+    var seen = Object.create(null);
+    var allUnique = true;
+    for (var i = 0; i < targets.length; i++) {
+      var el = targets[i];
+      var path = engine.cssPath(el, doc);
+      if (!path) { allUnique = false; results.push('  empty path for target #' + i); continue; }
+      var matches = doc.querySelectorAll(path);
+      var unique = matches.length === 1 && matches[0] === el;
+      if (!unique) allUnique = false;
+      if (!unique) results.push('  NOT UNIQUE: ' + path + ' (' + matches.length + ' matches)');
+      if (seen[path] && seen[path] !== el) allUnique = false;
+      seen[path] = el;
+    }
+    assert(allUnique, 'every sampled element gets a unique, resolution-stable cssPath');
+
+    var styled = doc.getElementById('styled-box');
+    assertEq(engine.cssPath(styled, doc), '#styled-box', 'unique #id preferred as selector');
+
+    var dups = doc.querySelectorAll('.dup');
+    var dupPaths = [];
+    for (var d = 0; d < dups.length; d++) dupPaths.push(engine.cssPath(dups[d], doc));
+    var dupSet = Object.create(null);
+    var dupDistinct = true;
+    for (var p = 0; p < dupPaths.length; p++) {
+      if (dupSet[dupPaths[p]]) dupDistinct = false;
+      dupSet[dupPaths[p]] = true;
+    }
+    assert(dupDistinct, 'duplicate-class elements get distinct paths', dupPaths.join(' | '));
+    assertIncludes(dupPaths[0], 'nth-of-type', 'duplicate-class path uses :nth-of-type');
+
+    var weird = doc.getElementById('weird:id');
+    var weirdPath = engine.cssPath(weird, doc);
+    assert(weirdPath.indexOf('#') === 0, 'id needing escaping is rendered as a # selector', weirdPath);
+    assertEq(doc.querySelectorAll(weirdPath).length, 1, 'escaped id selector resolves uniquely');
+
+    var secondStyled = doc.querySelectorAll('.styled')[1];
+    var secondPath = engine.cssPath(secondStyled, doc);
+    assertEq(doc.querySelectorAll(secondPath).length, 1, 'no-id class-duplicate element path is unique');
+    assertEq(engine.cssPath(doc.documentElement, doc), 'html', 'documentElement path is html');
+    assertEq(engine.cssPath(null, doc), '', 'cssPath(null) returns empty string');
+  }
+
+  async function testDescribeElement(doc) {
+    section('describeElement');
+
+    var styled = doc.getElementById('styled-box');
+    var ctx = engine.describeElement(styled, doc);
+    assert(!!ctx, 'describeElement returns an object');
+    assertEq(ctx.tag, 'div', 'ctx.tag');
+    assertEq(ctx.id, 'styled-box', 'ctx.id');
+    assertEq(ctx.selector, '#styled-box', 'ctx.selector matches cssPath');
+    assertEq(ctx.tagLabel, 'div#styled-box.styled', 'ctx.tagLabel is tag#id.class');
+    assertEq(ctx.box.w, 160, 'ctx.box.w from getBoundingClientRect');
+    assertEq(ctx.box.h, 44, 'ctx.box.h from getBoundingClientRect');
+    assertEq(ctx.styles.display, 'flex', 'non-default display captured');
+    assertEq(ctx.styles.position, 'relative', 'non-default position captured');
+    assertEq(ctx.styles.color, 'rgb(255, 255, 255)', 'non-default color captured');
+    assertEq(ctx.styles['background-color'], 'rgb(124, 58, 237)', 'non-default background-color captured');
+    assertEq(ctx.styles['font-size'], '18px', 'non-default font-size captured');
+    assertEq(ctx.styles['z-index'], '3', 'non-default z-index captured');
+    assertEq(ctx.styles['border-radius'], '10px', 'non-default border-radius captured');
+    assertEq(ctx.styles.transform, undefined, 'default transform filtered out');
+    assertEq(ctx.styles.opacity, undefined, 'default opacity filtered out');
+    assertEq(ctx.text, '样式盒子', 'ctx.text');
+    assertEq(ctx.padding, '', 'default padding omitted');
+
+    var dup = doc.querySelector('.dup');
+    var dupCtx = engine.describeElement(dup, doc);
+    assertEq(dupCtx.box.w, 140, 'box width includes padding (content-box 120 + 2*10)');
+    assertEq(dupCtx.box.h, 44, 'box height includes padding');
+    assertEq(dupCtx.padding, '10px', 'padding shorthand captured');
+    assertEq(dupCtx.margin, '0px 0px 8px', 'margin shorthand captured (non-default parts)');
+
+    var wrapper = doc.querySelector('.wrapper');
+    var wrapperCtx = engine.describeElement(wrapper, doc);
+    assertEq(Object.keys(wrapperCtx.styles).length, 0, 'plain inherited element has no non-default styles');
+    assertEq(wrapperCtx.padding, '2px', 'wrapper padding captured');
+    assertIncludes(wrapperCtx.html, '<div class="wrapper"', 'ctx.html contains outerHTML');
+
+    var longP = doc.getElementById('long-paragraph');
+    var sourceLen = longP.textContent.replace(/\s+/g, ' ').trim().length;
+    assert(sourceLen > 80, 'long-text source is longer than 80 chars (' + sourceLen + ')');
+    var longCtx = engine.describeElement(longP, doc);
+    assertEq(longCtx.text.length, 80, 'text clipped to exactly 80 chars incl ellipsis');
+    assert(longCtx.text.slice(-1) === '…', 'clipped text ends with ellipsis');
+    assert(longCtx.text.indexOf('这是很长') === 0, 'clipped text keeps the beginning');
+
+    var inputCtx = engine.describeElement(doc.getElementById('gender-input'), doc);
+    assertEq(inputCtx.text, '默认值', 'input value used as text');
+    var hintNames = inputCtx.hints.map(function (h) { return h.name; }).join(',');
+    assertIncludes(hintNames, 'type', 'input type hint present');
+    assertIncludes(hintNames, 'name', 'input name hint present');
+    assertIncludes(hintNames, 'placeholder', 'input placeholder hint present');
+
+    var secondStyled = doc.querySelectorAll('.styled')[1];
+    var secondCtx = engine.describeElement(secondStyled, doc);
+    var hintsByName = {};
+    secondCtx.hints.forEach(function (h) { hintsByName[h.name] = h.value; });
+    assertEq(hintsByName['data-widget'], 'widget', 'data-* hint present');
+    assertEq(hintsByName['data-state'], 'open', 'second data-* hint present');
+    assertIncludes(hintsByName.style, 'opacity', 'inline style hint present');
+    assertEq(hintsByName.role, 'button', 'role hint present');
+    assertEq(hintsByName['aria-label'], '部件', 'aria-label hint present');
+
+    var linkCtx = engine.describeElement(doc.getElementById('demo-link'), doc);
+    var linkHints = {};
+    linkCtx.hints.forEach(function (h) { linkHints[h.name] = h.value; });
+    assertIncludes(linkHints.href, 'example.com', 'href hint present');
+    assertEq(engine.describeElement(null, doc), null, 'describeElement(null) returns null');
+  }
+
+  async function testMarkdown(doc) {
+    section('formatContextMarkdown');
+
+    var ctx = engine.describeElement(doc.getElementById('styled-box'), doc);
+    var md = engine.formatContextMarkdown(ctx);
+    assert(typeof md === 'string' && md.length > 0, 'markdown is a non-empty string');
+    assertEq(
+      md.split('\n')[0],
+      '> Selected element: `' + ctx.selector + '` (' + ctx.tagLabel + ', ' +
+        Math.round(ctx.box.w) + '×' + Math.round(ctx.box.h) + ')',
+      'quote line carries selector, signature and size'
+    );
+    assertIncludes(md, '```html', 'html fence present');
+    var fence = htmlFence(md);
+    assert(!!fence, 'html fence body extractable');
+    assert(fence.length > 0 && fence.length <= 600, 'html fence body <= 600 chars (' + (fence || '').length + ')');
+    assertIncludes(fence, '<div', 'html fence contains outerHTML');
+    assert(md.slice(-2) === '\n\n', 'markdown ends with a blank line for human intent');
+    assertIncludes(md, '- Text: 「样式盒子」', 'text line');
+    assertIncludes(md, '- Styles: ', 'styles line');
+    assertIncludes(md, 'color: rgb(255, 255, 255)', 'styles line lists computed values');
+    assert(md.indexOf('- Clues: ') === -1, 'no empty clues line for element without hints');
+    assert(md.indexOf('选中元素') === -1, 'markdown is English only');
+    assert(md.indexOf('- Source: ') === -1, 'no source line when the caller knows no path');
+    assertIncludes(md, '(Add what you want changed about this element here)', 'closing hint line');
+
+    var secondCtx = engine.describeElement(doc.querySelectorAll('.styled')[1], doc);
+    var secondMd = engine.formatContextMarkdown(secondCtx);
+    assertIncludes(secondMd, '- Clues: ', 'clues line present when hints exist');
+    assertIncludes(secondMd, 'data-widget="widget"', 'clues line lists data-* hints');
+
+    var sourcedMd = engine.formatContextMarkdown(Object.assign({}, ctx, { source: '/tmp/fixtures/styled-box.html' }));
+    assertIncludes(sourcedMd, '- Source: /tmp/fixtures/styled-box.html', 'source line carries the absolute path');
+    var urlMd = engine.formatContextMarkdown(Object.assign({}, ctx, { url: 'http://127.0.0.1:3080/preview' }));
+    assertIncludes(urlMd, '- URL: http://127.0.0.1:3080/preview', 'url line for http(s) documents');
+
+    // Styles carries computed styles plus padding/margin, so strip the box model to
+    // reach the "nothing to report" case (padding/margin alone still count).
+    var bare = Object.assign({}, engine.describeElement(doc.querySelector('.wrapper'), doc), {
+      styles: {}, padding: '', margin: ''
+    });
+    assert(engine.formatContextMarkdown(bare).indexOf('- Styles: ') === -1,
+      'styles line omitted when nothing is non-default');
+
+    var longMd = engine.formatContextMarkdown(engine.describeElement(doc.getElementById('long-paragraph'), doc));
+    assertIncludes(longMd, '- Text: 「', 'text line present for text element');
+    assert(longMd.indexOf('…」') !== -1, 'text line carries truncated text');
+  }
+
+  async function testInspectorCore(doc) {
+    section('createInspector — hover / select / escape');
+
+    var hoverCalls = [];
+    var selectCalls = [];
+    var insp = engine.createInspector(doc, {
+      onHover: function (ctx) { hoverCalls.push(ctx); },
+      onSelect: function (ctx) { selectCalls.push(ctx); }
+    });
+
+    assertEq(insp.isEnabled(), false, 'starts disabled');
+    assertEq(insp.getSelection(), null, 'getSelection null before any click');
+    assertEq(overlayOf(doc), null, 'no overlay before enable()');
+
+    insp.enable();
+    assertEq(insp.isEnabled(), true, 'enable() flips isEnabled');
+    assert(!!overlayOf(doc), 'enable() injects overlay into the document');
+    assertEq(overlayOf(doc).parentNode, doc.body, 'overlay lives in doc.body');
+    assertEq(doc.documentElement.classList.contains('dsh-web-inspect-active'), true, 'active class applied');
+
+    var dupEl = doc.querySelector('.dup');
+    fireMouse(doc, dupEl, 'mousemove');
+    var hoverBox = part(doc, 'hover-box');
+    var hoverLabel = part(doc, 'hover-label');
+    assertEq(hoverCalls.length, 1, 'onHover fired once');
+    assert(!!hoverCalls[0], 'onHover got a context object');
+    assertEq(hoverCalls[0].selector, engine.cssPath(dupEl, doc), 'hover ctx.selector matches element');
+    assertEq(hoverBox.style.display, 'block', 'hover box visible');
+    assertIncludes(hoverLabel.textContent, 'div.dup', 'hover label shows tag+class');
+    assertIncludes(hoverLabel.textContent, '×', 'hover label shows WxH');
+    assert(parseFloat(hoverLabel.style.left) >= 0, 'tooltip left non-negative');
+    assert(parseFloat(hoverLabel.style.top) >= 0, 'tooltip top non-negative');
+
+    var overlayRect = overlayOf(doc).getBoundingClientRect();
+    var dupRect = dupEl.getBoundingClientRect();
+    assert(Math.abs(parseFloat(hoverBox.style.left) - (dupRect.left - overlayRect.left)) < 0.6,
+      'hover box x positioned from element rect');
+    assert(Math.abs(parseFloat(hoverBox.style.top) - (dupRect.top - overlayRect.top)) < 0.6,
+      'hover box y positioned from element rect');
+
+    var rootEl = doc.getElementById('outer-root');
+    fireMouse(doc, rootEl, 'mousemove');
+    assert(parseFloat(hoverLabel.style.top) > parseFloat(hoverBox.style.top),
+      'tooltip flips below when element sits at the top edge');
+
+    fireMouse(doc, part(doc, 'hover-box'), 'mousemove');
+    assertEq(hoverCalls[hoverCalls.length - 1], null, 'hovering own overlay clears hover');
+    assertEq(hoverBox.style.display, 'none', 'hover box hidden when nothing hoverable');
+
+    doc.getElementById('demo-link').addEventListener('click', function () {
+      doc.defaultView.__linkClicks = (doc.defaultView.__linkClicks || 0) + 1;
+    });
+    var link = doc.getElementById('demo-link');
+    var clickEv = fireMouse(doc, link, 'click');
+    assertEq(clickEv.defaultPrevented, true, 'click default prevented (no navigation)');
+    assertEq(doc.defaultView.__linkClicks, undefined, 'page click handler not reached (stopPropagation)');
+    assertEq(selectCalls.length, 1, 'onSelect fired once');
+    assertEq(selectCalls[0].selector, '#demo-link', 'onSelect ctx.selector');
+    assertEq(insp.getSelection().selector, '#demo-link', 'getSelection returns selection');
+    var selBox = part(doc, 'selection-box');
+    assertEq(selBox.style.display, 'block', 'selection box visible');
+    assert(selBox.style.background !== hoverBox.style.background, 'selection accent differs from hover accent');
+
+    fireMouse(doc, doc.getElementById('styled-box'), 'mousemove');
+    assertEq(insp.getSelection().selector, '#demo-link', 'selection frozen while hovering elsewhere');
+    assertEq(selBox.style.display, 'block', 'selection box stays visible while hovering');
+
+    var dupLast = doc.querySelectorAll('.dup');
+    fireMouse(doc, dupLast[dupLast.length - 1], 'click');
+    assertEq(selectCalls.length, 2, 'second click fires onSelect again');
+    assertEq(selectCalls[1].tag, 'div', 'second selection described');
+
+    var escEv = fireKey(doc, doc.body, 'Escape');
+    assertEq(escEv.defaultPrevented, true, 'Escape is consumed');
+    assertEq(insp.isEnabled(), false, 'Escape exits inspection mode');
+    assertEq(overlayOf(doc), null, 'disable() removes overlay');
+    assertEq(doc.documentElement.classList.contains('dsh-web-inspect-active'), false, 'active class removed');
+    assertEq(part(doc, 'style'), null, 'injected style element removed');
+
+    var afterDisable = fireMouse(doc, link, 'click');
+    assertEq(afterDisable.defaultPrevented, false, 'click no longer intercepted after disable');
+    assertEq(doc.defaultView.__linkClicks, 1, 'page click handler works again after disable');
+
+    insp.enable();
+    assertEq(insp.isEnabled(), true, 're-enable works');
+    insp.destroy();
+    assertEq(insp.isEnabled(), false, 'destroy() disables');
+    assertEq(overlayOf(doc), null, 'destroy() removes overlay');
+    insp.enable();
+    assertEq(insp.isEnabled(), false, 'destroyed inspector cannot be re-enabled');
+  }
+
+  async function testNestedAndShadow(doc) {
+    section('nested iframes / shadow DOM');
+
+    var slot = doc.getElementById('frame-slot');
+    var innerFrame = doc.createElement('iframe');
+    innerFrame.id = 'inner-frame';
+    innerFrame.style.cssText = 'width:200px;height:120px;border:0;';
+    slot.appendChild(innerFrame);
+    var innerDoc = innerFrame.contentDocument;
+    assert(!!innerDoc, 'nested same-origin iframe document accessible');
+    innerDoc.open();
+    innerDoc.write('<!doctype html><html><body style="margin:0">' +
+      '<div id="deep-child">深层元素</div></body></html>');
+    innerDoc.close();
+    await sleep(30);
+
+    var host = doc.createElement('div');
+    host.id = 'shadow-host2';
+    var shadow = host.attachShadow({ mode: 'open' });
+    var shadowInner = doc.createElement('div');
+    shadowInner.id = 'shadow-inner';
+    shadowInner.textContent = '影子元素';
+    shadow.appendChild(shadowInner);
+    doc.getElementById('shadow-host').appendChild(host);
+    await sleep(30);
+
+    var hoverCalls = [];
+    var insp = engine.createInspector(doc, {
+      onHover: function (ctx) { hoverCalls.push(ctx); }
+    });
+    insp.enable();
+    await sleep(80); /* let frame sync settle */
+
+    fireMouse(innerDoc, innerDoc.getElementById('deep-child'), 'mousemove');
+    var innerCtx = hoverCalls[hoverCalls.length - 1];
+    assert(!!innerCtx, 'move inside nested iframe produced a hover context');
+    if (innerCtx) {
+      assertEq(innerCtx.tag, 'iframe', 'nested iframe content resolves to the iframe element');
+      assertEq(innerCtx.id, 'inner-frame', 'resolved iframe element is the one in our document');
+      assertEq(overlayOf(doc).contains(part(doc, 'hover-box')), true, 'overlay stays in the top document');
+    }
+
+    var hoverCountBeforeShadow = hoverCalls.length;
+    fireMouse(doc, shadowInner, 'mousemove');
+    assert(hoverCalls.length > hoverCountBeforeShadow,
+      'composed move over shadow content reached the document listener');
+    var shadowCtx = hoverCalls[hoverCalls.length - 1];
+    assert(!!shadowCtx, 'move over shadow content produced a hover context');
+    if (shadowCtx) {
+      assertEq(shadowCtx.id, 'shadow-host2', 'shadow target resolves to the host element');
+      assertEq(shadowCtx.tag, 'div', 'shadow host described as its own tag');
+    }
+
+    insp.destroy();
+    assertEq(overlayOf(doc), null, 'overlay cleaned up from top document');
+    assertEq(innerDoc.querySelector('[data-dsh-web-inspect-overlay]'), null, 'no overlay leaked into nested iframe');
+  }
+
+  async function testCustomColor(doc) {
+    section('options');
+    var insp = engine.createInspector(doc, { color: '#00ff00', selectionColor: '#ff00ff', zIndex: 12345 });
+    insp.enable();
+    fireMouse(doc, doc.querySelector('.dup'), 'mousemove');
+    var box = part(doc, 'hover-box');
+    assertIncludes(box.style.background, 'rgba(0, 255, 0', 'custom hover color applied');
+    var overlay = overlayOf(doc);
+    assertEq(overlay.style.zIndex, '12345', 'custom zIndex applied');
+    fireMouse(doc, doc.querySelector('.dup'), 'click');
+    assertIncludes(part(doc, 'selection-box').style.background, 'rgba(255, 0, 255', 'custom selection color applied');
+    insp.disable();
+  }
+
+  async function testFixture() {
+    section('fixture page (real iframe, same-origin)');
+
+    var frame = makeIframe(520, 420);
+    var loaded = await new Promise(function (resolve) {
+      frame.addEventListener('load', function () { resolve(true); }, { once: true });
+      frame.setAttribute('src', '../fixtures/inspect-demo.html');
+      setTimeout(function () { resolve(false); }, 4000);
+    });
+    var doc = frame.contentDocument;
+    assert(loaded, 'fixture iframe fired load');
+    assert(!!doc, 'fixture iframe is same-origin (contentDocument readable; run with --allow-file-access-from-files)');
+    if (!doc) { frame.parentNode.removeChild(frame); return; }
+    assertEq(doc.title, 'dsh-web-inspect 演示页 fixture', 'fixture document loaded');
+
+    var lateAdded = await waitFor(function () { return doc.getElementById('late-added'); }, 3000);
+    assert(!!lateAdded, 'fixture script mutation ran (late-added present)');
+    assertIncludes(doc.getElementById('mutated-target').textContent, '脚本已改写', 'fixture text mutation ran');
+
+    section('fixture — cssPath / describeElement');
+    var sampleSelectors = ['#page-header', '.dup', '#fixed-badge', '#abs-chip', '#inline-img',
+      '#name-input', '#submit-btn', '#demo-icon', '#demo-list li', '#long-text',
+      '#shadow-host', '#panel-form', '#mutated-target'];
+    var sample = [];
+    sampleSelectors.forEach(function (sel) {
+      var list = doc.querySelectorAll(sel);
+      for (var i = 0; i < list.length; i++) sample.push(list[i]);
+    });
+    assert(sample.length >= 15, 'fixture sample covers >= 15 elements (' + sample.length + ')');
+    var fixtureUnique = true;
+    var fixturePaths = Object.create(null);
+    for (var i = 0; i < sample.length; i++) {
+      var path = engine.cssPath(sample[i], doc);
+      var matches = doc.querySelectorAll(path);
+      if (matches.length !== 1 || matches[0] !== sample[i]) {
+        fixtureUnique = false;
+        results.push('  NOT UNIQUE: ' + path + ' (' + matches.length + ')');
+      }
+      if (fixturePaths[path] && fixturePaths[path] !== sample[i]) fixtureUnique = false;
+      fixturePaths[path] = sample[i];
+    }
+    assert(fixtureUnique, 'all fixture sample paths unique on a real page');
+    var liPath = engine.cssPath(doc.querySelector('#demo-list li:nth-of-type(2)'), doc);
+    assertEq(doc.querySelectorAll(liPath).length, 1, 'no-id/class <li> gets a unique path');
+
+    var svgCtx = engine.describeElement(doc.getElementById('demo-icon'), doc);
+    assertEq(svgCtx.tag, 'svg', 'SVG element described (no SVGAnimatedString crash)');
+    assertEq(svgCtx.classes.join(' '), 'icon', 'SVG class read via getAttribute');
+    assertEq(doc.querySelectorAll(svgCtx.selector).length, 1, 'SVG selector unique');
+
+    var fixedCtx = engine.describeElement(doc.getElementById('fixed-badge'), doc);
+    assertEq(fixedCtx.styles.position, 'fixed', 'fixed positioning captured');
+    assertIncludes(fixedCtx.tagLabel, 'badge-fixed', 'tagLabel includes class');
+
+    var darkCtx = engine.describeElement(doc.querySelector('#panel-dark .dup'), doc);
+    assertEq(darkCtx.styles['background-color'], 'rgb(31, 41, 55)', 'dark section background captured');
+    assertEq(darkCtx.styles.color, 'rgb(249, 250, 251)', 'dark section text color captured');
+
+    var imgCtx = engine.describeElement(doc.getElementById('inline-img'), doc);
+    var imgHints = {};
+    imgCtx.hints.forEach(function (h) { imgHints[h.name] = h.value; });
+    assertIncludes(imgHints.src, 'data:image/svg+xml', 'data-URI src hint captured');
+    assertEq(imgHints.alt, '内联 SVG 数据图标', 'alt hint captured');
+
+    var inputCtx = engine.describeElement(doc.getElementById('name-input'), doc);
+    assertEq(inputCtx.text, '小助手', 'fixture input value used as text');
+    var fixtureLongCtx = engine.describeElement(doc.getElementById('long-text'), doc);
+    assertEq(fixtureLongCtx.text.length, 80, 'fixture long text clipped to 80');
+    assert(fixtureLongCtx.text.slice(-1) === '…', 'fixture long text ends with ellipsis');
+
+    var md = engine.formatContextMarkdown(engine.describeElement(doc.getElementById('submit-btn'), doc));
+    assertIncludes(md, '> Selected element: `#submit-btn`', 'fixture markdown selector');
+    assertIncludes(md, '- Clues: ', 'fixture markdown hints');
+    assertIncludes(md, 'data-action="submit"', 'fixture markdown data-* hint');
+    assertIncludes(md, '```html', 'fixture markdown html fence');
+
+    section('fixture — overlay behavior on a real page');
+    var hoverCalls = [];
+    var selectCalls = [];
+    var insp = engine.createInspector(doc, {
+      onHover: function (ctx) { hoverCalls.push(ctx); },
+      onSelect: function (ctx) { selectCalls.push(ctx); }
+    });
+    insp.enable();
+    assert(!!overlayOf(doc), 'overlay injected into fixture document');
+    assertEq(overlayOf(doc).parentNode, doc.body, 'overlay in fixture body');
+
+    var win = doc.defaultView;
+    var formPanel = doc.getElementById('panel-form');
+    fireMouse(doc, formPanel, 'mousemove');
+    var box = part(doc, 'hover-box');
+    var label = part(doc, 'hover-label');
+    var overlayRect = overlayOf(doc).getBoundingClientRect();
+    var panelRect = formPanel.getBoundingClientRect();
+    assert(Math.abs(parseFloat(box.style.left) - (panelRect.left - overlayRect.left)) < 0.6,
+      'fixture hover box x matches rect');
+    assert(Math.abs(parseFloat(box.style.top) - (panelRect.top - overlayRect.top)) < 0.6,
+      'fixture hover box y matches rect');
+    var labelRect = label.getBoundingClientRect();
+    assert(labelRect.top >= -1 && labelRect.bottom <= win.innerHeight + 1,
+      'tooltip clamped inside fixture viewport');
+    assert((box.style.outline || '').indexOf('1px') !== -1, 'hover outline is 1px');
+
+    /* DOM mutated while inspecting: overlay must survive and stay usable */
+    var injected = doc.createElement('div');
+    injected.id = 'injected-live';
+    injected.className = 'dup';
+    injected.textContent = '注入元素';
+    doc.getElementById('panel-list').appendChild(injected);
+    await sleep(140);
+    assert(!!overlayOf(doc), 'overlay survives DOM mutation while enabled');
+    var hoverBeforeInject = hoverCalls.length;
+    fireMouse(doc, injected, 'mousemove');
+    assert(hoverCalls.length > hoverBeforeInject, 'hover works on element injected after enable()');
+    assertEq(hoverCalls[hoverCalls.length - 1].id, 'injected-live', 'injected element described');
+    assertEq(part(doc, 'hover-label').style.display, 'block', 'hover box visible for injected element');
+
+    /* scrolling: overlay must stay glued to the element in document coordinates */
+    fireMouse(doc, formPanel, 'mousemove');
+    await sleep(20);
+    var beforeTop = parseFloat(box.style.top);
+    var beforeLeft = parseFloat(box.style.left);
+    win.scrollTo(0, 240);
+    win.dispatchEvent(new win.Event('scroll'));
+    await sleep(60);
+    fireMouse(doc, formPanel, 'mousemove');
+    var afterTop = parseFloat(box.style.top);
+    var afterLeft = parseFloat(box.style.left);
+    assert(Math.abs(afterTop - beforeTop) < 1 && Math.abs(afterLeft - beforeLeft) < 1,
+      'overlay stays glued to element while scrolling (doc coords)',
+      'x ' + beforeLeft + '->' + afterLeft + ', y ' + beforeTop + '->' + afterTop);
+    assertEq(win.scrollY, 240, 'fixture really scrolled');
+    win.scrollTo(0, 0);
+    win.dispatchEvent(new win.Event('scroll'));
+    await sleep(30);
+
+    var submitClicks = 0;
+    doc.getElementById('demo-form').addEventListener('submit', function () {
+      submitClicks++;
+    });
+    var clickEv = fireMouse(doc, doc.getElementById('submit-btn'), 'click');
+    assertEq(clickEv.defaultPrevented, true, 'fixture click default prevented');
+    assertEq(selectCalls.length, 1, 'fixture onSelect fired');
+    assertEq(selectCalls[0].selector, '#submit-btn', 'fixture onSelect selector');
+    assertEq(insp.getSelection().tag, 'button', 'fixture selection tag');
+    assertEq(submitClicks, 0, 'form did not submit from intercepted click');
+
+    var submitEv = doc.defaultView.Event ? new doc.defaultView.Event('submit', { bubbles: true, cancelable: true }) : null;
+    doc.getElementById('demo-form').dispatchEvent(submitEv);
+    assertEq(submitEv.defaultPrevented, true, 'submit event default prevented while inspecting');
+
+    var escEv = fireKey(doc, doc.body, 'Escape');
+    assertEq(inputCtx.text.length > 0, true, 'fixture describeElement sanity');
+    assertEq(escEv.defaultPrevented, true, 'fixture Escape consumed');
+    assertEq(insp.isEnabled(), false, 'fixture Escape exits');
+    assertEq(overlayOf(doc), null, 'fixture overlay removed');
+    assertEq(doc.documentElement.classList.contains('dsh-web-inspect-active'), false,
+      'fixture active class removed');
+
+    frame.parentNode.removeChild(frame);
+  }
+
+  function finish(crash) {
+    if (crash) {
+      fail++;
+      results.push('FAIL: uncaught error | ' + (crash && crash.stack ? crash.stack.split('\n').slice(0, 4).join(' ') : String(crash)));
+    }
+    results.push('');
+    results.push('SUMMARY: ' + pass + ' passed, ' + fail + ' failed');
+    render();
+    document.title = 'SELFTEST ' + (fail === 0 ? 'PASS' : 'FAIL') + ' ' + pass + '/' + fail;
+    window.__SELFTEST__ = { pass: pass, fail: fail, results: results };
+  }
+
+  async function main() {
+    var hasApi = await testApiSurface();
+    if (hasApi) {
+      var frame = makeIframe(420, 500);
+      var doc = writeDoc(frame, SYNTHETIC_HTML);
+      assert(!!doc, 'synthetic iframe document writable and accessible');
+      if (doc) {
+        try { await testCssPath(doc); } catch (e) { results.push('FAIL: cssPath group threw | ' + e); fail++; }
+        try { await testDescribeElement(doc); } catch (e) { results.push('FAIL: describeElement group threw | ' + e); fail++; }
+        try { await testMarkdown(doc); } catch (e) { results.push('FAIL: markdown group threw | ' + e); fail++; }
+        try { await testInspectorCore(doc); } catch (e) { results.push('FAIL: inspector core group threw | ' + e); fail++; }
+        try { await testNestedAndShadow(doc); } catch (e) { results.push('FAIL: nested/shadow group threw | ' + e); fail++; }
+        try { await testCustomColor(doc); } catch (e) { results.push('FAIL: options group threw | ' + e); fail++; }
+      }
+      frame.parentNode.removeChild(frame);
+      try { await testFixture(); } catch (e) { results.push('FAIL: fixture group threw | ' + e); fail++; }
+    }
+    finish(null);
+  }
+
+  var watchdog = setTimeout(function () {
+    if (!window.__SELFTEST__) finish(new Error('selftest watchdog timed out after 6s'));
+  }, 6000);
+
+  main().then(function () {
+    clearTimeout(watchdog);
+  }).catch(function (err) {
+    clearTimeout(watchdog);
+    finish(err);
+  });
+})();
+</script>
+</body>
+</html>

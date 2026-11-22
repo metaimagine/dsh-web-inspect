@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-web-inspect 演示页 fixture</title>
+<style>
+  :root { --ink: #1f2937; --accent: #2563eb; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: #f8fafc;
+  }
+  .page-header { position: relative; padding: 18px 24px; background: #0f172a; color: #f8fafc; }
+  .page-header h1 { margin: 0; font-size: 22px; }
+  .badge-fixed {
+    position: fixed; right: 12px; top: 12px; z-index: 5;
+    padding: 6px 10px; border-radius: 999px;
+    background: #f59e0b; color: #111827; font-size: 12px;
+  }
+  .app {
+    display: grid; gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 960px; padding: 24px;
+  }
+  .panel {
+    position: relative;
+    border: 1px solid #dbeafe; border-radius: 12px;
+    padding: 16px; background: #ffffff;
+  }
+  .panel h2 { margin: 0 0 10px; font-size: 16px; }
+  .wrapper { padding: 8px 12px; }
+  .dup { padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: #eef2ff; }
+  .dup.tall { min-height: 88px; }
+  .dark-section { background: #111827; color: #e5e7eb; border-color: #374151; }
+  .dark-section .dup { background: #1f2937; color: #f9fafb; }
+  .float-abs {
+    position: absolute; right: 12px; top: 12px;
+    padding: 4px 8px; border-radius: 6px;
+    background: #dcfce7; color: #14532d; font-size: 12px;
+  }
+  .inline-styled {
+    display: flex; align-items: center; justify-content: center;
+    width: 120px; height: 40px; border-radius: 8px;
+    background: #7c3aed; color: #ffffff;
+  }
+  .item-list { margin: 8px 0 0; padding-left: 20px; }
+  .item-list li { margin: 4px 0; }
+  .form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  label { font-size: 14px; }
+  input, textarea, select {
+    font: inherit; padding: 6px 8px;
+    border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff;
+  }
+  textarea { width: 100%; min-height: 56px; }
+  .long-text { margin: 0 0 8px; color: #475569; font-size: 14px; }
+  .inline-img { display: block; width: 96px; height: 56px; border-radius: 8px; border: 1px solid #e2e8f0; }
+  .shadow-host { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; }
+  svg.icon { width: 20px; height: 20px; }
+  #late-added { border: 2px dashed #a855f7; }
+</style>
+</head>
+<body>
+  <header class="page-header" id="page-header">
+    <h1 id="doc-title">dsh-web-inspect 演示页面</h1>
+  </header>
+
+  <div class="badge-fixed" id="fixed-badge" data-kind="floating">固定定位徽标</div>
+
+  <main class="app" id="app">
+    <section class="panel" id="panel-layout">
+      <h2>布局</h2>
+      <div class="wrapper">
+        <div class="dup" data-widget="card" data-slot="a">重复类名卡片 A</div>
+      </div>
+      <div class="wrapper">
+        <div class="dup" data-widget="card" data-slot="b">重复类名卡片 B</div>
+      </div>
+      <div class="float-abs" id="abs-chip">绝对定位标签</div>
+    </section>
+
+    <section class="panel dark-section" id="panel-dark">
+      <h2>深色区块</h2>
+      <div class="dup" data-widget="card" data-slot="c">深色区块里的重复类名卡片</div>
+      <p class="long-text" id="long-text">这是一段刻意写得很长的说明文字，用来验证 describeElement 会把超过八十个字符的文本压缩并截断，同时保留开头部分，不会把整段文字塞进 Markdown 上下文块里；当用户悬停或点选这段文字时，插入聊天框的应该只是语气克制的摘要，而不是整段原文。</p>
+    </section>
+
+    <section class="panel" id="panel-media">
+      <h2>媒体</h2>
+      <img class="inline-img" id="inline-img"
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='56'%3E%3Crect width='96' height='56' fill='%232563eb'/%3E%3Ccircle cx='24' cy='28' r='12' fill='%23f8fafc'/%3E%3C/svg%3E"
+        alt="内联 SVG 数据图标">
+      <div class="inline-styled" id="inline-chip">内联样式块</div>
+    </section>
+
+    <section class="panel" id="panel-form">
+      <h2>表单</h2>
+      <form id="demo-form" action="#submitted">
+        <div class="form-row">
+          <label for="name-input">昵称</label>
+          <input id="name-input" name="nickname" type="text" placeholder="请输入昵称" value="小助手">
+        </div>
+        <div class="form-row">
+          <label for="topic-select">主题</label>
+          <select id="topic-select" name="topic">
+            <option value="a">A</option>
+            <option value="b" selected>B</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <input id="agree-check" name="agree" type="checkbox" checked>
+          <label for="agree-check">同意</label>
+        </div>
+        <textarea id="note-input" name="note" placeholder="备注"></textarea>
+        <div class="form-row">
+          <button id="submit-btn" type="submit" data-action="submit">提交</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel" id="panel-list">
+      <h2>列表</h2>
+      <ul class="item-list" id="demo-list">
+        <li>条目一</li>
+        <li>条目二</li>
+        <li>条目三</li>
+      </ul>
+      <svg class="icon" id="demo-icon" viewBox="0 0 20 20" aria-label="图标">
+        <circle cx="10" cy="10" r="8" fill="#22c55e"></circle>
+      </svg>
+      <div class="shadow-host" id="shadow-host"></div>
+    </section>
+
+    <section class="panel" id="panel-mutation">
+      <h2>运行时变更</h2>
+      <div id="mutated-target">等待脚本改写…</div>
+    </section>
+  </main>
+
+  <script>
+    // Mutates the DOM after load: exercises overlay re-sync / MutationObserver paths.
+    setTimeout(function () {
+      var target = document.getElementById('mutated-target');
+      if (target) target.textContent = '脚本已改写这段文字';
+      var panel = document.getElementById('panel-mutation');
+      if (!panel) return;
+      var late = document.createElement('div');
+      late.id = 'late-added';
+      late.className = 'dup';
+      late.setAttribute('data-widget', 'late');
+      late.textContent = '加载后注入的元素';
+      panel.appendChild(late);
+    }, 40);
+  </script>
+</body>
+</html>

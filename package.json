@@ -1,0 +1,68 @@
+{
+  "name": "dsh-web-inspect",
+  "version": "0.2.1",
+  "description": "Element inspector for the DSH (DeepSeek Harness) web UI: hover-highlight any element in the right-sidebar HTML preview, click to select, and send its selector, HTML and computed styles to the current AI session as a folded reference chip.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "assets"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "element-inspector",
+    "inspect-element",
+    "element-picker",
+    "dom-inspector",
+    "css-selector",
+    "devtools",
+    "html-preview",
+    "sidebar",
+    "preview",
+    "inspector",
+    "ai-coding-agent",
+    "web-client-plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metaimagine/dsh-web-inspect.git"
+  },
+  "homepage": "https://github.com/metaimagine/dsh-web-inspect#readme",
+  "bugs": {
+    "url": "https://github.com/metaimagine/dsh-web-inspect/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml"
+      ]
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer"
+      ],
+      "immediately": true
+    },
+    "manifestVersion": 1
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,70 @@
+{
+  "capturedAt": "2026-11-22T13:45:49.042Z",
+  "viewport": {
+    "width": 1280,
+    "height": 820,
+    "dpr": 2,
+    "cropHeight": null
+  },
+  "frames": 102,
+  "fps": 15,
+  "durationSeconds": 6.8,
+  "gif": {
+    "bytes": 634431,
+    "width": 960,
+    "height": 788,
+    "colors": 128,
+    "paletteWidth": 960
+  },
+  "mp4": {
+    "bytes": 200934,
+    "width": 1440,
+    "height": 1182,
+    "crf": 20
+  },
+  "luminance": {
+    "min": 218.349,
+    "max": 225.369
+  },
+  "blackFrames": [],
+  "blankFrames": [],
+  "flicker": {
+    "medianDiff": 0,
+    "loudest": [
+      {
+        "index": 87,
+        "diff": 9.93928
+      },
+      {
+        "index": 20,
+        "diff": 8.61168
+      },
+      {
+        "index": 30,
+        "diff": 7.12382
+      },
+      {
+        "index": 29,
+        "diff": 6.99706
+      }
+    ]
+  },
+  "loopSeam": 0,
+  "qcFrames": [
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-01.png",
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-02.png",
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-03.png",
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-04.png",
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-05.png",
+    "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/qc-06.png"
+  ],
+  "qcFrameIndex": {
+    "qc-01.png": 6,
+    "qc-02.png": 26,
+    "qc-03.png": 45,
+    "qc-04.png": 62,
+    "qc-05.png": 80,
+    "qc-06.png": 101
+  },
+  "contactSheet": "/Users/care/Projects/dsh-inspect-plugin/tests/screencast/qc/contact-sheet.png"
+}
